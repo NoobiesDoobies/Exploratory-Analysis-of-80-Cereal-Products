@@ -1,0 +1,342 @@
+---
+title: "Exploratory Data Analysis - 80 Cereals Data"
+author: "Carlios Eryan"
+date: "`r Sys.Date()`"
+output:  html_document
+---
+
+```{r setup, include=FALSE}
+# clear-up the environment
+rm(list = ls())
+
+# chunk options
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center"
+)
+
+options(scipen = 999)
+
+```
+# Introduction
+
+## Context
+
+Variables in the dataset:
+
+- Name: Name of cereal
+
+- mfr: Manufacturer of cereal
+
+  A = American Home Food Products;
+  
+  G = General Mills
+  
+  K = Kelloggs
+  
+  N = Nabisco
+  
+  P = Post
+  
+  Q = Quaker Oats
+  
+  R = Ralston Purina
+  
+- type:
+
+  cold
+  
+  hot
+  
+- calories: calories per serving
+
+- protein: grams of protein
+
+- fat: grams of fat
+
+- sodium: milligrams of sodium
+
+- fiber: grams of dietary fiber
+
+- carbo: grams of complex carbohydrates
+
+- sugars: grams of sugars
+
+- potass: milligrams of potassium
+
+- vitamins: vitamins and minerals - 0, 25, or 100, indicating the typical percentage of FDA recommended
+
+- shelf: display shelf (1, 2, or 3, counting from the floor)
+
+- weight: weight in ounces of one serving
+
+- cups: number of cups in one serving
+
+- rating: a rating of the cereals (Possibly from Consumer Reports?)
+
+
+
+
+# 1. Explanation
+
+
+The dataset is from Kaggle https://www.kaggle.com/datasets/crawford/80-cereals. This dataset contains information about 80 different cereal products from 7 manufacturers. Manufacturers include American Home Food Products, General Mills, Kellogs, Nabisco, Post, Quaker Oats, and Ralston Purina. This analysis will provide understanding of what goes in the cereal that we eat everyday for breakfast.
+
+
+# 2. Read data and initial inspection
+
+Loading libraries
+```{r}
+library(readr)
+library(dplyr)
+library(reshape)
+library(ggplot2)
+```
+
+
+## 2.1. Reading data
+
+Read data using read.csv (data is in the same folder)
+
+```{r}
+cereal <- read.csv("cereal.csv")
+```
+
+
+## 2.2. Initial data inspection
+
+**Data dimension is 77 rows by 16 columns**
+
+```{r}
+dim(cereal)
+```
+
+**The columns of the dataset**
+```{r}
+names(cereal)
+```
+
+```{r}
+head(cereal, 10)
+```
+
+**Data structure**
+
+```{r}
+str(cereal)
+```
+
+**Data summary**
+
+```{r}
+summary(cereal)
+```
+**insight**
+
+There are negative value in carbo, sugars, and potass
+
+
+
+```{r echo= FALSE}
+cereal_melt <- melt(cereal %>% 
+  select(-c(mfr, type)), id.vars="name")
+
+ggplot(cereal_melt) +
+  geom_boxplot(aes(y=value))+
+  facet_wrap(vars(variable), scale="free_y")+
+  labs(title="Boxplot of Each Numeric Columns", y="")
+  
+```
+**insight**
+
+There are a lot of "outliers" in categories and weight which might be caused by different company size classification (small, medium, large)
+
+
+# 3. Data cleansing and transformation
+
+## 3.1. Check missing data
+
+**Check if data has missing value**
+
+```{r}
+anyNA(cereal)
+```
+**insight**
+
+No missing value from data. However, we need to replace negative value with zero because none of the columns can have value below zero
+
+```{r}
+cereal[cereal < 0] <- 0
+```
+
+
+## 3.2. Transform data type
+
+```{r}
+cereal<-cereal %>%
+  mutate(mfr = as.factor(mfr),
+         type = as.factor(type),
+         mfr=recode(mfr, 
+                    A="American Home Food Products",
+                    G="General Mills",
+                    K="Kelloggs",
+                    N="Nabisco",
+                    P="Post",
+                    Q="Quarker Oats",
+                    R="Ralston Purnia"),
+         type=recode(type,
+                     C="Cold",
+                     H="Hot"))
+```
+
+```{r}
+levels(cereal$mfr)
+levels(cereal$type)
+```
+Manufacturer(mfr) of cereal:
+- A = American Home Food Products;
+
+- G = General Mills
+
+- K = Kelloggs
+
+- N = Nabisco
+
+- P = Post
+
+- Q = Quaker Oats
+
+- R = Ralston Purina
+
+Type of cereal:
+
+- C = Cold
+
+- H = Hot
+
+
+
+
+# 4. Further exploratory analysis
+
+**1. Correlation heatmap of numeric columns value**
+```{r}
+cereal_is.numeric <- cereal %>% 
+  select_if(is.numeric)
+
+cereal_heatmap <- round(cor(cereal_is.numeric), 1)
+cereal_heatmap <- melt(cereal_heatmap)
+
+ggplot(cereal_heatmap, aes(x=X1, y=X2, fill=value)) +
+  geom_tile()+
+  scale_fill_gradient(low = "pink", high = "dark red")+
+  labs(title="Correlation Heatmap",x="", y="")+
+  geom_text(aes(x=X1, y=X2, label=value), color="white")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), plot.title = element_text(hjust=0.5))
+```
+**insight**
+
+There seems to be a very strong correlation between fiber and potassium content in cereal. Weight also correlate positively with calories, this makes sense because in physics, mass equates to energy, however not all of the energy from food (in this case, cereal) can be digested therefore it is not a perfect correlation.
+
+**2. Maybe it is more crucial to look at the correlation specific to the rating column**
+```{r}
+cereal_ratcorr <- data.frame(cor(cereal_is.numeric)) %>% select(rating) %>% filter(rating != 1)
+cereal_ratcorr$id <- row.names(cereal_ratcorr)
+
+
+ggplot(cereal_ratcorr, mapping=aes(x=id, y=rating, fill=rating)) +
+  geom_col()+
+  ylim(-1,1)+
+  scale_fill_gradient2(low = "#3D2F38", mid="#715266", high = "#A3918C", limits=c(-1,1))+
+  labs(title="Correlation with Rating",x="", y="Correlation Value")+
+  coord_flip()+
+  theme(plot.title = element_text(hjust=0.5))+
+  theme_minimal()
+```
+**insight**
+
+There aren't a strong positive correlation between rating and the cereal's ingredients. The largest positive correlation value is only 0.58. Meanwhile, there are two strong negative correlation that contribute to the cereal's rating, sugars and calories which the correlation value of -0.76 and -0.69 respectively.
+
+
+**3. Calories and Sugar have a pretty negative correlation with ratings**
+```{r}
+
+cereal_calcor<- melt(cereal %>% 
+select(rating, calories, sugars), id.vars="rating")
+  
+  
+ggplot(cereal_calcor, mapping=aes(x=rating, y=value)) +
+  facet_wrap(vars(variable), scale="free_y")+
+  geom_point(aes(col=variable), show.legend=FALSE)+
+  geom_smooth(method="lm", aes(col=variable), show.legend=FALSE)
+  labs(title="Scatter Plot Correlation of Both Calories and Sugars with Ratings",x="Rating", y="")+
+  theme(plot.title = element_text(hjust=0.5))+
+  theme_minimal()
+```
+**insight**
+
+As we can see from this scatter plot, the rating of a cereal seems to go down the more the calories and sugars it contains.
+
+**4. Manfacturer ranked by average sugars in their products**
+```{r}
+
+mfr_sugar <- cereal %>% 
+  group_by(mfr) %>% 
+  summarise(mean_sugars = mean(sugars)) %>% 
+  ungroup() %>% 
+  arrange(desc(mean_sugars))
+
+
+ggplot(mfr_sugar, mapping=aes(x=reorder(mfr, mean_sugars), y=mean_sugars, fill=mean_sugars)) +
+  geom_col(show.legend=FALSE)+
+  scale_fill_gradient(low = "#5ADBFF", high = "#004BA8")+
+  labs(
+    title="Average Sugar Content in Each Manufacturer's Products",
+    x="",
+    y="Average Sugar Content (grams)"
+  )+
+  coord_flip()+
+  theme(plot.title = element_text(hjust=0.5))+
+  theme_minimal()
+```
+**insight**
+
+The difference between manufacturers with the lowest and highest average sugar content in their products is astonishing. We should really becareful when buying cereals from Post, General Mills, and Kelloggs as their products contain the most sugar.
+
+**5. Top 10 cereal with highest sugar level**
+```{r}
+sugar_highest <- head(cereal %>% 
+  arrange(desc(sugars)) %>% 
+  select(c(name, sugars)), 10)
+
+ggplot(sugar_highest, mapping=aes(x=reorder(name, sugars), y=sugars))+
+  geom_col(aes(fill=sugars), show.legend = FALSE)+
+  geom_hline(yintercept = mean(cereal$sugars), col="white", size=1)+
+  labs(
+    title="Top 10 Cereal with Most Sugar Content",
+    x="",
+    y="Sugar Content (grams)"
+    )+  
+  geom_text(aes(0, mean(cereal$sugars), label=round(mean(cereal$sugars), 1), vjust=0))+
+  scale_fill_gradient(low="#C1A5A9", high="#694873")+
+  theme(plot.title = element_text(hjust=0.5))+
+  theme_minimal()+
+  coord_flip()
+
+```
+**insight**
+
+These cereal products have sugar content exceeds average cereal (6.9 grams) by 3-10 grams or 60-200%. This is a very surprising fact and I think we should avoid eating these cereals. However, there are cereal brands without sugar content which are:
+
+```{r}
+w.o_sugar <- cereal %>% 
+  select(c(name, sugars)) %>% 
+  filter(sugars == 0)
+
+print(w.o_sugar$name)
+```
+
+
+# 5. Conclusion
+Generally, cereal that contain more sugar and calories will have lower ratings. While containing more fiber and protein can help with the ratings. Here we notice that cereal that are healthier are rated higher, so I assume that the rating is rated according to the health value. There are also cereals that we absolutely have to avoid eating regularly because the sugar content are just too high.
