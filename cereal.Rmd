@@ -97,7 +97,7 @@ library(ggplot2)
 
 ## 2.1. Reading data
 
-Read data using read.csv (data is in the same folder)
+**Read data using read.csv (data is in the same folder)**
 
 ```{r}
 cereal <- read.csv("cereal.csv")
@@ -220,6 +220,7 @@ Type of cereal:
 
 # 4. Further exploratory analysis
 
+
 **1. Correlation heatmap of numeric columns value**
 ```{r}
 cereal_is.numeric <- cereal %>% 
@@ -238,6 +239,7 @@ ggplot(cereal_heatmap, aes(x=X1, y=X2, fill=value)) +
 **insight**
 
 There seems to be a very strong correlation between fiber and potassium content in cereal. Weight also correlate positively with calories, this makes sense because in physics, mass equates to energy, however not all of the energy from food (in this case, cereal) can be digested therefore it is not a perfect correlation.
+
 
 **2. Maybe it is more crucial to look at the correlation specific to the rating column**
 ```{r}
@@ -259,6 +261,7 @@ ggplot(cereal_ratcorr, mapping=aes(x=id, y=rating, fill=rating)) +
 There aren't a strong positive correlation between rating and the cereal's ingredients. The largest positive correlation value is only 0.58. Meanwhile, there are two strong negative correlation that contribute to the cereal's rating, sugars and calories which the correlation value of -0.76 and -0.69 respectively.
 
 
+
 **3. Calories and Sugar have a pretty negative correlation with ratings**
 ```{r}
 
@@ -269,7 +272,7 @@ select(rating, calories, sugars), id.vars="rating")
 ggplot(cereal_calcor, mapping=aes(x=rating, y=value)) +
   facet_wrap(vars(variable), scale="free_y")+
   geom_point(aes(col=variable), show.legend=FALSE)+
-  geom_smooth(method="lm", aes(col=variable), show.legend=FALSE)
+  geom_smooth(method="lm", aes(col=variable), show.legend=FALSE)+
   labs(title="Scatter Plot Correlation of Both Calories and Sugars with Ratings",x="Rating", y="")+
   theme(plot.title = element_text(hjust=0.5))+
   theme_minimal()
@@ -277,6 +280,7 @@ ggplot(cereal_calcor, mapping=aes(x=rating, y=value)) +
 **insight**
 
 As we can see from this scatter plot, the rating of a cereal seems to go down the more the calories and sugars it contains.
+
 
 **4. Manfacturer ranked by average sugars in their products**
 ```{r}
@@ -303,6 +307,7 @@ ggplot(mfr_sugar, mapping=aes(x=reorder(mfr, mean_sugars), y=mean_sugars, fill=m
 **insight**
 
 The difference between manufacturers with the lowest and highest average sugar content in their products is astonishing. We should really becareful when buying cereals from Post, General Mills, and Kelloggs as their products contain the most sugar.
+
 
 **5. Top 10 cereal with highest sugar level**
 ```{r}
